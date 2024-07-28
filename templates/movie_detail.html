@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ movie.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='movie_detail.css') }}">
+</head>
+<body>
+    <div class="movie-detail">
+        <div class="movie-header">
+            <img src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}" alt="{{ movie.title }}">
+            <div class="movie-info">
+                <h1>{{ movie.title }} ({{ movie.release_date[:4] }})</h1>
+                <p><strong>Director:</strong>
+                    {% set directors = movie.credits.crew | selectattr('job', 'equalto', 'Director') | map(attribute='name') | list %}
+                    {{ directors | join(', ') }}
+                </p>
+                <p><strong>Cast:</strong>
+                    {% set cast_list = movie.credits.cast[:10] | map(attribute='name') | list %}
+                    {{ cast_list | join(', ') }}
+                </p>
+                <p><strong>Genres:</strong>
+                    {% set genres = movie.genres | map(attribute='name') | list %}
+                    {{ genres | join(', ') }}
+                </p>
+                <p><strong>Overview:</strong> {{ movie.overview }}</p>
+            </div>
+        </div>
+        <div class="movie-actions">
+            <button onclick="window.history.back()">Back</button>
+        </div>
+    </div>
+</body>
+</html>

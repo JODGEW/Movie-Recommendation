@@ -1,0 +1,158 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+.filters {
+    margin-bottom: 20px;
+    padding: 10px;
+    border: 1px solid #000;  /* Black border */
+    background-color: #fff;  /* White background */
+    border-radius: 5px;  /* Optional: To add rounded corners */
+}
+
+.filters div {
+    margin-bottom: 10px;
+}
+
+.filters a {
+    margin-right: 10px;
+    text-decoration: none;
+    color: #000;
+}
+
+.filters a:hover {
+    text-decoration: underline;
+}
+
+.search-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+#search-bar {
+    padding: 10px;
+    width: 80%;
+    max-width: 500px;
+    font-size: 1em;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.movies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.movie {
+    border: 1px solid #000;  /* Black border */
+    padding: 10px;
+    width: calc(20% - 20px);
+    box-sizing: border-box;
+    background-color: #fff;
+}
+
+.movie img {
+    width: 100%;
+    border-bottom: 1px solid #ccc;  /* To separate the image from the movie name */
+}
+
+.movie a {
+    text-decoration: none;
+    color: #000;
+}
+
+.movie a:hover {
+    color: #555;
+}
+
+.movie h2 {
+    font-size: 1.2em;
+    margin: 10px 0 5px;
+    text-align: center;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.pagination button {
+    margin: 0 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+}
+
+.recommendations-container {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.recommend-button {
+    padding: 10px 20px;
+    font-size: 1.2em;
+    cursor: pointer;
+    background-color: #000;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.recommend-button:hover {
+    background-color: #555;
+}
+
+.recommendations {
+    margin-top: 20px;
+}
+
+.recommendation {
+    border: 1px solid #000;  /* Black border */
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #fff;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgb(0,0,0);
+    background-color: rgba(0,0,0,0.4);
+    padding-top: 60px;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 50%;  /* Reduced width */
+    max-width: 600px;
+}
+
+.modal-content h2 {
+    text-align: center;  /* Ensure h3 text is centered */
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Movie Recommendations</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+</head>
+<body>
+    <div class="filters">
+        <div>
+            <strong>Language:</strong>
+            <a href="#" onclick="filterByLanguage('')">All</a>
+            <a href="#" onclick="filterByLanguage('en')">English</a>
+            <a href="#" onclick="filterByLanguage('zh')">Chinese</a>
+            <a href="#" onclick="filterByLanguage('ja')">Japanese</a>
+            <a href="#" onclick="filterByLanguage('ko')">Korean</a>
+            <a href="#" onclick="filterByLanguage('fr')">French</a>
+            <a href="#" onclick="filterByLanguage('de')">German</a>
+            <a href="#" onclick="filterByLanguage('th')">Thai</a>
+            <a href="#" onclick="filterByLanguage('it')">Italian</a>
+            <a href="#" onclick="filterByLanguage('es')">Spanish</a>
+            <a href="#" onclick="filterByLanguage('ru')">Russian</a>
+            <a href="#" onclick="filterByLanguage('hi')">Hindi</a>
+            <a href="#" onclick="filterByLanguage('pt')">Portuguese</a>
+            <a href="#" onclick="filterByLanguage('ar')">Arabic</a>
+            <a href="#" onclick="filterByLanguage('tr')">Turkish</a>
+            <a href="#" onclick="filterByLanguage('sv')">Swedish</a>
+            <a href="#" onclick="filterByLanguage('nl')">Dutch</a>
+            <a href="#" onclick="filterByLanguage('pl')">Polish</a>
+            <a href="#" onclick="filterByLanguage('no')">Norwegian</a>
+            <a href="#" onclick="filterByLanguage('fi')">Finnish</a>
+            <a href="#" onclick="filterByLanguage('da')">Danish</a>
+        </div>
+        <div>
+            <strong>Genre:</strong>
+            <a href="#" onclick="filterByGenre('')">All</a>
+            {% for genre in genres %}
+            <a href="#" onclick="filterByGenre('{{ genre.id }}')">{{ genre.name }}</a>
+            {% endfor %}
+        </div>
+        <div>
+            <strong>Year:</strong>
+            <a href="#" onclick="filterByYear('')">All</a>
+            <a href="#" onclick="filterByYear('2024')">2024</a>
+            <a href="#" onclick="filterByYear('2023')">2023</a>
+            <a href="#" onclick="filterByYear('2022')">2022</a>
+            <a href="#" onclick="filterByYear('2021')">2021</a>
+            <a href="#" onclick="filterByYear('2020')">2020</a>
+            <a href="#" onclick="filterByYear('2019')">2019</a>
+            <a href="#" onclick="filterByYear('2018')">2018</a>
+            <a href="#" onclick="filterByYear('2017')">2017</a>
+            <a href="#" onclick="filterByYear('2016')">2016</a>
+            <a href="#" onclick="filterByYear('2015-2010')">2015-2010</a>
+            <a href="#" onclick="filterByYear('2009-2005')">2009-2005</a>
+            <a href="#" onclick="filterByYear('2004-2000')">2004-2000</a>
+            <a href="#" onclick="filterByYear('90s')">90s</a>
+            <a href="#" onclick="filterByYear('80s')">80s</a>
+            <a href="#" onclick="filterByYear('before_80s')">Before 80s</a>
+        </div>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="search-bar" placeholder="Search for movies..." oninput="searchMovies()">
+    </div>
+
+    <div class="recommendations-container">
+        <button class="recommend-button" onclick="submitSelections()">Get Recommendations</button>
+        <div id="recommendations" class="recommendations"></div>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Recommended Movies</h2>
+            <div id="modal-movies"></div>
+        </div>
+    </div>
+
+    <div id="movies" class="movies"></div>
+    <div class="pagination">
+        <button id="prev-page" onclick="loadMovies(currentPage - 1)" disabled>Previous</button>
+        <span id="page-buttons"></span>
+        <button id="next-page" onclick="loadMovies(currentPage + 1)">Next</button>
+    </div>
+    
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let currentGenre = '';
+        let currentYear = '';
+        let currentLanguage = '';
+        let selectedMovies = [];
+        let allMovies = []; // Define allMovies globally to store all fetched movies
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Document loaded, calling loadAllMovies...');
+            loadAllMovies();
+        });
+
+        function filterByLanguage(language) {
+            currentLanguage = language;
+            currentPage = 1;
+            loadAllMovies(true);
+        }
+
+        function filterByGenre(genre) {
+            currentGenre = genre;
+            currentPage = 1;
+            loadAllMovies(true);
+        }
+
+        function filterByYear(year) {
+            currentYear = year;
+            currentPage = 1;
+            loadAllMovies(true);
+        }
+
+        async function loadAllMovies(reset = false) {
+            if (reset) {
+                allMovies = []; // Reset allMovies array
+                currentPage = 1;
+                totalPages = 1;
+            }
+            await fetchAllMovies();
+            displayMovies(allMovies.slice(0, 20)); // Display the first 20 movies initially
+            updatePagination();
+        }
+
+        async function fetchAllMovies() {
+            let page = 1;
+            try {
+                while (allMovies.length < 200) {  // Fetch until we have 200 movies
+                    const data = await fetchMovies(page);
+                    if (Array.isArray(data) && data.length > 0) {
+                        allMovies = [...allMovies, ...data];
+                        if (data.length < 20) break; // If less than 20 movies are fetched, it's the last page
+                        page++;
+                    } else {
+                        console.error('Unexpected response structure:', data);
+                        break;
+                    }
+                }
+                totalPages = Math.ceil(allMovies.length / 20); // Adjust total pages based on the fetched data
+                console.log('Fetched all movies:', allMovies); // Log all fetched movies
+            } catch (error) {
+                console.error('Error fetching movies:', error);
+                const container = document.getElementById('movies');
+                container.innerHTML = '<p>Error fetching movies. Please try again later.</p>';
+            }
+        }
+
+        async function fetchMovies(page) {
+            let url = `/api/movies?page=${page}`;
+            if (currentGenre) {
+                url += `&genre=${currentGenre}`;
+            }
+            if (currentYear) {
+                url += `&year=${currentYear}`;
+            }
+            if (currentLanguage) {
+                url += `&language=${currentLanguage}`;
+            }
+
+            console.log(`Fetching movies with URL: ${url}`);
+
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Fetched data:', data);
+                return data;
+            } else {
+                throw new Error(`Error fetching movies: ${response.status}`);
+            }
+        }
+
+        function displayMovies(movies) {
+            console.log('Displaying movies:', movies); // Log the movies being displayed
+            const container = document.getElementById('movies');
+            container.innerHTML = '';
+            if (movies.length === 0) {
+                container.innerHTML = '<p>No movies found.</p>';
+            } else {
+                movies.forEach(movie => {
+                    const movieEl = document.createElement('div');
+                    movieEl.classList.add('movie');
+                    movieEl.innerHTML = `
+                        <input type="checkbox" id="movie_${movie.id}" onclick="toggleMovie(${movie.id})">
+                        <a href="/movie/${movie.id}">
+                            <img src="${movie.poster}" alt="${movie.name}">
+                            <h2>${movie.name} (${movie.year})</h2>
+                        </a>
+                    `;
+                    container.appendChild(movieEl);
+                });
+            }
+        }
+
+        function updatePagination() {
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            document.getElementById('next-page').disabled = currentPage === totalPages;
+            const pageButtons = document.getElementById('page-buttons');
+            pageButtons.innerHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                const button = document.createElement('button');
+                button.textContent = i;
+                button.onclick = () => changePage(i);
+                if (i === currentPage) {
+                    button.disabled = true;
+                }
+                pageButtons.appendChild(button);
+            }
+        }
+
+        function changePage(page) {
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            displayMovies(allMovies.slice((page - 1) * 20, page * 20));
+            updatePagination();
+        }
+
+        function searchMovies() {
+            const query = document.getElementById('search-bar').value.toLowerCase();
+            console.log('Search query:', query); // Log search query
+            console.log('All movies:', allMovies); // Log allMovies content
+            const filteredMovies = allMovies.filter(movie => movie.name.toLowerCase().includes(query));
+            console.log('Filtered movies:', filteredMovies); // Log filtered movies
+            displayMovies(filteredMovies);
+        }
+
+        function toggleMovie(movieId) {
+            if (selectedMovies.includes(movieId)) {
+                selectedMovies = selectedMovies.filter(id => id !== movieId);
+            } else {
+                if (selectedMovies.length < 3) {
+                    selectedMovies.push(movieId);
+                } else {
+                    alert("You can only select up to 3 movies.");
+                    document.getElementById(`movie_${movieId}`).checked = false;
+                }
+            }
+        }
+
+        function submitSelections() {
+            if (selectedMovies.length !== 3) {
+                alert("Please select exactly 3 movies.");
+                return;
+            }
+            fetch('/recommend', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ movies: selectedMovies }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(error => { throw new Error(error.error); });
+                }
+                return response.json();
+            })
+            .then(recommendations => {
+                console.log('Recommendations:', recommendations);  // Log recommendations
+                if (!Array.isArray(recommendations)) {
+                    throw new Error('Unexpected response format');
+                }
+                displayRecommendations(recommendations);
+            })
+            .catch(error => {
+                console.error('Error getting recommendations:', error);
+                alert(error.message);
+            });
+        }
+
+        function displayRecommendations(recommendations) {
+            const modalMoviesContainer = document.getElementById('modal-movies');
+            modalMoviesContainer.innerHTML = '';
+            recommendations.forEach(movieId => {
+                fetch(`/api/imdb_movie/${movieId}`)
+                    .then(response => response.json())
+                    .then(movie => {
+                        const movieEl = document.createElement('div');
+                        movieEl.classList.add('recommendation');
+                        movieEl.innerHTML = `
+                            <h3>${movie.title}</h3>
+                            <p><strong>Year of Release:</strong> ${movie.year}</p>
+                            <p><strong>Description:</strong> ${movie.description}</p>
+                            <p><strong>Rating:</strong> ${movie.rating}</p>
+                            <p><strong>Metascore:</strong> ${movie.metascore}</p>
+                            <p><strong>Gross:</strong> ${movie.gross}</p>
+                            <p><strong>Votes:</strong> ${movie.votes}</p>
+                            <p><strong>Watch Time:</strong> ${movie.watch_time} minutes</p>
+                        `;
+                        modalMoviesContainer.appendChild(movieEl);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching movie details:', error);
+                    });
+            });
+            openModal();
+        }
+
+        function openModal() {
+            const modal = document.getElementById('modal');
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            modal.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
