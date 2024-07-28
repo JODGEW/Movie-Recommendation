@@ -1,10 +1,14 @@
 from flask import Flask, jsonify, render_template, request
+import os
 import requests
 import pandas as pd
 from surprise import Dataset, Reader, SVD
 from surprise.model_selection import train_test_split
 
-app = Flask(__name__)
+app = Flask(__name__, 
+            template_folder=os.path.join(os.path.dirname(__file__), '..', 'templates'),
+            static_folder=os.path.join(os.path.dirname(__file__), '..', 'static')
+)
 
 # Load movie details into a DataFrame
 try:
