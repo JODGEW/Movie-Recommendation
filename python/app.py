@@ -2,13 +2,13 @@ from flask import Flask, jsonify, render_template, request
 import requests
 import pandas as pd
 from surprise import Dataset, Reader, SVD
-from surprise.model_selection import train_test_split, cross_validate
+from surprise.model_selection import train_test_split
 
 app = Flask(__name__)
 
 # Load movie details into a DataFrame
 try:
-    movie_details_df = pd.read_csv('Top_1000_IMDb_movies_New_version.csv')
+    movie_details_df = pd.read_csv('./data/Top_1000_IMDb_movies_New_version.csv')
     print("CSV columns:", movie_details_df.columns.tolist())  # Log the columns in the CSV file
 except Exception as e:
     print(f"Error loading CSV file: {e}")
@@ -136,7 +136,7 @@ def recommend():
             return jsonify({'error': 'Please select exactly 3 movies.'}), 400
 
         # Load the ratings data
-        ratings_df = pd.read_csv('./ratings_data.csv')
+        ratings_df = pd.read_csv('./data/ratings_data.csv')
 
         # Use the Surprise library to handle the dataset and train the model
         reader = Reader(rating_scale=(1, 5))

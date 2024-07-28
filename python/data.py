@@ -28,7 +28,7 @@ ratings_df = ratings_df[['userId', 'movieId', 'rating', 'Movie Name']]
 ratings_df = ratings_df.groupby(['userId', 'movieId']).agg({'rating': 'mean'}).reset_index()
 
 # Save the ratings data to a CSV file
-ratings_df.to_csv('./ratings_data.csv', index=False)
+ratings_df.to_csv('./data/ratings_data.csv', index=False)
 
 # Display the first few rows
 print(ratings_df.head())
