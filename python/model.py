@@ -150,7 +150,7 @@ class Transformer(nn.Module):
 
     def create_masks(self, src, tgt):
         src_mask = (src != 0).unsqueeze(1).unsqueeze(2)
-        tgt_mask = (tgt != 0).unsqueeze(1).unsqueeze(2)
+        tgt_mask = (tgt != 0).unsqueeze(1).unsqueeze(3)
         seq_length = tgt.size(1)
         future_mask = torch.tril(torch.ones((seq_length, seq_length), device=tgt.device)).bool()
         combined_tgt_mask = tgt_mask & future_mask.unsqueeze(0).unsqueeze(1)
