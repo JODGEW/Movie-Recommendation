@@ -100,14 +100,6 @@ class TransformerEncoderLayer(nn.Module):
         )
 
     def forward(self, src: Tensor, mask: Tensor = None) -> Tensor:
-        """
-        前向传播
-        参数:
-            src: 输入张量
-            mask: 掩码张量 (可选)
-        返回:
-            src: 编码器层的输出
-        """
         src = self.multi_head_attention(src, src, src, mask)
         return self.feedforward_network(src)
 
