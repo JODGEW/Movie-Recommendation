@@ -8,6 +8,8 @@ from surprise.model_selection import train_test_split
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+
 app = Flask(__name__, 
             template_folder=os.path.join(os.path.dirname(__file__), '..', 'templates'),
             static_folder=os.path.join(os.path.dirname(__file__), '..', 'static')
@@ -15,7 +17,7 @@ app = Flask(__name__,
 
 # Load movie details into a DataFrame
 try:
-    movie_details_df = pd.read_csv('./data/Top_1000_IMDb_movies_New_version.csv')
+    movie_details_df = pd.read_csv(os.path.join(DATA_DIR, 'Top_1000_IMDb_movies_New_version.csv'))
     print("CSV columns:", movie_details_df.columns.tolist())  # Log the columns in the CSV file
 except Exception as e:
     print(f"Error loading CSV file: {e}")
@@ -78,7 +80,7 @@ def fetch_movies(page=1, genre=None, year=None, language=None):
             url += f"&primary_release_year={year}"
     if language:
         url += f"&with_original_language={language}"
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
     if response.status_code == 200:
         return response.json().get('results', [])
     else:
@@ -86,14 +88,14 @@ def fetch_movies(page=1, genre=None, year=None, language=None):
 
 def fetch_genres():
     url = f"https://api.themoviedb.org/3/genre/movie/list?api_key={TMDB_API_KEY}&language=en-US"
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
     if response.status_code == 200:
         return response.json().get('genres', [])
     return []
 
 def fetch_movie_details(movie_id):
     url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={TMDB_API_KEY}&language=en-US&append_to_response=credits"
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
     if response.status_code == 200:
         return response.json()
     return None
@@ -114,7 +116,7 @@ def get_movies():
     for movie_data in movies:
         movie_id = movie_data['id']
         detail_url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={TMDB_API_KEY}&language=en-US&append_to_response=credits"
-        detail_response = requests.get(detail_url)
+        detail_response = requests.get(detail_url, timeout=10)
         if detail_response.status_code == 200:
             detail_data = detail_response.json()
             detailed_movies.append({
@@ -145,7 +147,7 @@ def recommend():
             return jsonify({'error': 'Please select exactly 3 movies.'}), 400
 
         # Load the ratings data
-        ratings_df = pd.read_csv('./data/ratings_data.csv')
+        ratings_df = pd.read_csv(os.path.join(DATA_DIR, 'ratings_data.csv'))
 
         # Use the Surprise library to handle the dataset and train the model
         reader = Reader(rating_scale=(1, 5))
