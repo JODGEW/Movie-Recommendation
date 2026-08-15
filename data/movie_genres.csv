@@ -373,6 +373,7 @@ movieId,genres
 84,drama mystery thriller
 771,action drama war
 984,drama
+577,drama film-noir
 774,action adventure drama thriller
 632,children comedy drama
 442,comedy mystery thriller
@@ -413,6 +414,7 @@ movieId,genres
 992,crime drama mystery romance thriller
 715,comedy drama romance
 408,drama film-noir thriller
+746,drama
 723,action adventure western
 292,drama
 718,action drama romance western
@@ -457,9 +459,13 @@ movieId,genres
 838,drama
 362,action adventure animation children comedy
 865,drama
+749,drama musical romance
 202,comedy fantasy romance
 905,crime drama
 294,drama war
+295,adventure drama war
+109,comedy
+572,comedy drama romance
 255,drama
 278,drama war
 994,comedy crime drama mystery
@@ -469,6 +475,9 @@ movieId,genres
 406,drama romance
 141,action crime imax
 661,action adventure sci-fi
+324,action adventure comedy musical romance thriller
+341,drama
+452,comedy musical romance
 788,drama romance
 603,drama romance
 765,adventure fantasy thriller imax
@@ -484,6 +493,7 @@ movieId,genres
 370,drama
 622,adventure drama thriller
 165,drama fantasy thriller
+465,adventure comedy sci-fi
 42,crime drama thriller
 986,drama thriller
 500,action adventure drama sci-fi thriller
@@ -531,22 +541,24 @@ movieId,genres
 93,action drama war
 652,drama mystery sci-fi thriller
 481,action adventure sci-fi imax
-109,adventure animation children drama
 770,comedy crime
 767,comedy drama romance
 502,mystery sci-fi thriller
-283,animation comedy drama
+585,comedy drama romance
 483,adventure animation children comedy crime
 954,drama
 475,action adventure sci-fi imax
+196,drama
 80,comedy drama romance
 145,drama mystery thriller
+566,drama romance
 250,adventure animation children fantasy imax
 942,action comedy
 112,adventure animation children comedy fantasy imax
 969,animation children comedy crime
 9,action crime drama mystery sci-fi thriller imax
 791,drama fantasy romance sci-fi
+820,drama
 623,drama
 833,comedy drama romance
 355,drama thriller
@@ -554,37 +566,50 @@ movieId,genres
 380,drama
 793,animation children comedy fantasy musical romance imax
 660,drama
+802,crime drama romance
 110,drama mystery war
 808,comedy fantasy romance
 224,action adventure drama fantasy mystery imax
 604,crime drama film-noir thriller
 228,drama
 946,drama
+191,adventure comedy drama romance
 238,drama
 990,comedy drama
 543,comedy drama romance
 61,action adventure crime imax
+340,drama
 350,comedy horror
 556,drama
-813,drama
+208,crime
+755,comedy romance
 639,comedy drama romance
+323,crime drama thriller
 642,action adventure thriller imax
+640,drama
 975,crime drama thriller
 489,drama romance
 809,drama thriller
 814,animation comedy
 790,comedy drama
 506,adventure drama imax
+561,drama romance
+331,comedy drama
 630,adventure fantasy imax
+315,comedy drama romance
 64,action drama western
 753,comedy drama
+316,drama
 523,drama romance
+758,documentary
 780,action adventure sci-fi imax
+65,comedy
 609,drama fantasy romance
-802,action sci-fi imax
 212,drama mystery thriller
+467,comedy drama
 548,drama
 886,adventure drama
+187,comedy drama
 654,adventure drama thriller imax
 251,drama
 505,drama
@@ -592,10 +617,12 @@ movieId,genres
 659,adventure fantasy imax
 140,comedy crime drama
 359,drama romance sci-fi
+731,drama romance
 795,action adventure animation children comedy fantasy
 214,comedy drama
 18,sci-fi imax
 655,action adventure sci-fi imax
+321,action drama thriller
 499,action adventure sci-fi
 478,action sci-fi imax
 819,drama romance
@@ -610,52 +637,106 @@ movieId,genres
 624,crime drama thriller
 662,action animation comedy
 782,drama sci-fi thriller
+457,crime drama romance
 349,drama thriller war
-820,drama romance
 436,animation children fantasy
 395,drama
 764,action adventure comedy crime
 286,comedy drama fantasy mystery romance
+139,children drama thriller
+232,crime drama
 215,action adventure sci-fi thriller
 635,action adventure fantasy sci-fi imax
 352,action adventure comedy sci-fi
 484,action adventure sci-fi
 645,action sci-fi thriller
+852,drama
 873,drama
 612,western
+596,action crime mystery thriller
+468,comedy drama romance
+336,
+471,comedy drama romance
+338,comedy
 351,adventure drama sci-fi
-232,adventure animation children comedy drama fantasy
+328,comedy
+591,drama romance
+320,
 761,crime drama mystery
 246,drama
 665,drama
+189,drama mystery thriller
 872,drama war
 240,thriller
+313,drama mystery thriller
 606,drama
+597,drama thriller
+598,war
 361,action adventure animation children comedy
 682,adventure comedy
 542,drama
 647,drama
+721,drama
 950,crime drama
+77,drama
 868,adventure animation children fantasy
 218,drama war
+416,war
 476,sci-fi
 347,comedy drama romance
 633,drama
 392,drama
+229,children comedy drama
 625,drama
+125,drama
 615,horror
-229,action sci-fi
 614,drama romance
+332,drama thriller
+354,animation drama
 485,drama mystery romance
+198,action adventure war
 334,comedy
-598,action drama thriller war
 768,action crime mystery thriller
 346,sci-fi
+756,comedy drama
+979,horror mystery
 230,crime drama
-77,adventure animation children
+343,drama
 667,adventure animation children comedy
 709,animation crime drama
 501,drama
+926,animation drama war
+206,action romance thriller
 651,animation comedy
+456,drama
+595,comedy drama
+432,drama
 938,action comedy sci-fi
+163,drama
 757,action adventure thriller
+133,drama war
+968,drama
+479,drama
+203,action drama
+156,comedy drama
+194,mystery romance thriller
+62,action adventure animation sci-fi
+138,action drama thriller
+59,action romance
+176,horror thriller
+594,comedy drama romance
+197,action
+204,action drama
+582,drama
+806,adventure animation children comedy
+930,comedy drama
+222,action drama
+488,comedy war
+330,crime drama
+492,comedy drama
+617,crime drama
+477,comedy crime drama mystery thriller
+136,comedy romance
+593,drama
+87,action thriller
+180,adventure animation children comedy

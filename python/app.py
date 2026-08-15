@@ -39,6 +39,16 @@ try:
 except Exception as e:
     print(f"Error loading CSV file: {e}")
 
+# Genre words per local movie id (from MovieLens), used to re-rank
+# each pick's candidates toward genre-compatible recommendations
+MOVIE_GENRES = {}
+try:
+    _genres_df = pd.read_csv(os.path.join(DATA_DIR, 'movie_genres.csv')).fillna('')
+    MOVIE_GENRES = {int(row['movieId']): set(str(row['genres']).split())
+                    for _, row in _genres_df.iterrows()}
+except Exception as e:
+    print(f"Could not load movie_genres.csv: {e}")
+
 
 def load_transformer_recommender():
     """Load the trained Transformer checkpoint; returns None if unavailable."""
@@ -245,26 +255,31 @@ def recommend_with_transformer(tmdb_movie_ids, num_recommendations=5):
     round-robin, so a minority-genre pick (one animation among two action
     films) still contributes recommendations instead of being averaged away.
     """
-    titles, texts = [], []
+    titles, picks = [], []
     for tmdb_id in tmdb_movie_ids:
         details = fetch_movie_details(tmdb_id)
         if not details or not details.get('title'):
             return None
         titles.append(details['title'])
-        genres = [GENRE_SYNONYMS.get(g['name'].lower(), g['name'].lower())
-                  for g in details.get('genres', [])]
-        texts.append(f"{details['title']} {' '.join(genres)}".strip())
+        genres = {GENRE_SYNONYMS.get(g['name'].lower(), g['name'].lower())
+                  for g in details.get('genres', [])}
+        picks.append((f"{details['title']} {' '.join(sorted(genres))}".strip(), genres))
 
     r = transformer_recommender
     per_pick_names = []
-    for text in texts:
+    for text, pick_genres in picks:
         if not any(word in r['vocab'] for word in text.lower().split()):
             continue  # nothing the model understands in this pick
-        names = r['recommend'](
+        names = list(r['recommend'](
             [text], r['vocab'], r['model'], r['label_encoder'],
-            r['max_seq_len'], device='cpu', top_k=15,
-        )
-        per_pick_names.append(list(names))
+            r['max_seq_len'], device='cpu', top_k=40,
+        ))
+        # Stable re-rank: the more genres a candidate shares with this
+        # pick, the earlier it goes; model order breaks ties
+        if pick_genres and MOVIE_GENRES:
+            names.sort(key=lambda name: -len(
+                MOVIE_GENRES.get(NAME_TO_ID.get(name), set()) & pick_genres))
+        per_pick_names.append(names)
     if not per_pick_names:
         return None
 
