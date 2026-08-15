@@ -43,7 +43,8 @@ A web app for a movie recommendation system that fetches detailed movie informat
     python python/app.py
     ```
 
-5. Open your web browser and go to `http://127.0.0.1:5000/`.
+5. Open your web browser and go to `http://127.0.0.1:5001/`.
+   (Port 5001 avoids macOS AirPlay Receiver, which occupies port 5000. Override with `PORT=...`.)
 
 ## Training
 
