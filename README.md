@@ -22,10 +22,6 @@ A web app for a movie recommendation system that fetches detailed movie informat
     <img src="images/matinee_detail.png" alt="Movie detail page" width="800">
 </p>
 
-<p align="center">
-    <img src="images/matinee_mobile.png" alt="Mobile layout" width="320">
-</p>
-
 ## Steps to Run:
 
 1. **Navigate to the directory that you cloned the project into**:
