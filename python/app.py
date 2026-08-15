@@ -2,8 +2,11 @@ from flask import Flask, jsonify, render_template, request
 import os
 import requests
 import pandas as pd
+from dotenv import load_dotenv
 from surprise import Dataset, Reader, SVD
 from surprise.model_selection import train_test_split
+
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 app = Flask(__name__, 
             template_folder=os.path.join(os.path.dirname(__file__), '..', 'templates'),
@@ -53,7 +56,9 @@ def get_imdb_movie_details(movie_id):
         print(f"ValueError: {e}")
     return None
 
-TMDB_API_KEY = '61dc118e3630c672f33e35eace3e91b6'
+TMDB_API_KEY = os.getenv('TMDB_API_KEY')
+if not TMDB_API_KEY:
+    raise RuntimeError("TMDB_API_KEY is not set. Copy .env.example to .env and fill in your key.")
 
 def fetch_movies(page=1, genre=None, year=None, language=None):
     url = f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_API_KEY}&language=en-US&sort_by=popularity.desc&page={page}"

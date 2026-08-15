@@ -1,5 +1,6 @@
 Flask==2.3.2
 requests==2.31.0
+python-dotenv==1.2.2
 pandas<1.5
 scikit-surprise==1.1.4
 numpy<2

@@ -1,0 +1,13 @@
+# Environment variables (contains secrets - never commit)
+.env
+
+# Virtual environment
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
