@@ -2,22 +2,28 @@
 
 A web app for a movie recommendation system that fetches detailed movie information from TMDb for the front-end, ensuring up-to-date and rich metadata. For the backend, IMDb data is utilized to train a custom transformer deep learning model, leveraging user ratings and reviews to provide highly accurate and personalized recommendations. This approach combines real-time data fetching with advanced deep learning techniques to enhance user experience and movie discovery.
 
-## Main Page
+## Home
 <p align="center">
-    <img src="images/page.png" alt="Main Page" width="800">
+    <img src="images/matinee_home.png" alt="Matinee home page" width="800">
 </p>
 
-## Recommendations from Top Five Guesses Based on User-Selected Movies
+## Pick Three Films
 <p align="center">
-    <img src="images/rec.png" alt="Recommendation" width="600">
+    <img src="images/matinee_picks.png" alt="Choosing three films, tracked in the tray" width="800">
+</p>
+
+## Get Five Back
+<p align="center">
+    <img src="images/matinee_results.png" alt="Five recommendations from the transformer" width="800">
+</p>
+
+## Movie Detail
+<p align="center">
+    <img src="images/matinee_detail.png" alt="Movie detail page" width="800">
 </p>
 
 <p align="center">
-    <img src="images/rec1.png" alt="Recommendation 1" width="600">
-</p>
-
-<p align="center">
-    <img src="images/rec2.png" alt="Recommendation 2" width="600">
+    <img src="images/matinee_mobile.png" alt="Mobile layout" width="320">
 </p>
 
 ## Steps to Run:
