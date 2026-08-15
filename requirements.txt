@@ -1,6 +1,10 @@
 Flask==2.3.2
+Werkzeug==2.3.8
 requests==2.31.0
 python-dotenv==1.2.2
 pandas<1.5
 scikit-surprise==1.1.4
 numpy<2
+torch==2.13.0
+scikit-learn==1.7.2
+matplotlib==3.10.9

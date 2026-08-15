@@ -4,11 +4,11 @@ import requests
 import pandas as pd
 from dotenv import load_dotenv
 from surprise import Dataset, Reader, SVD
-from surprise.model_selection import train_test_split
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'models', 'transformer.pt')
 
 app = Flask(__name__, 
             template_folder=os.path.join(os.path.dirname(__file__), '..', 'templates'),
@@ -16,11 +16,64 @@ app = Flask(__name__,
 )
 
 # Load movie details into a DataFrame
+NAME_TO_ID = {}
 try:
     movie_details_df = pd.read_csv(os.path.join(DATA_DIR, 'Top_1000_IMDb_movies_New_version.csv'))
     print("CSV columns:", movie_details_df.columns.tolist())  # Log the columns in the CSV file
+    for _, row in movie_details_df.iterrows():
+        NAME_TO_ID.setdefault(str(row['Movie Name']), int(row['Unnamed: 0']))
 except Exception as e:
     print(f"Error loading CSV file: {e}")
+
+
+def load_transformer_recommender():
+    """Load the trained Transformer checkpoint; returns None if unavailable."""
+    if not os.path.exists(MODEL_PATH):
+        print("No transformer checkpoint found, /recommend will use SVD fallback")
+        return None
+    try:
+        import numpy as np
+        import torch
+        from sklearn.preprocessing import LabelEncoder
+        from model import Transformer, get_recommendations
+
+        ckpt = torch.load(MODEL_PATH, map_location='cpu')
+        model = Transformer(
+            src_vocab_size=ckpt['vocab_size'], tgt_vocab_size=ckpt['vocab_size'],
+            max_seq_len=ckpt['max_seq_len'], **ckpt['hparams'],
+        )
+        model.load_state_dict(ckpt['state_dict'])
+        model.eval()
+        label_encoder = LabelEncoder()
+        label_encoder.classes_ = np.array(ckpt['label_classes'])
+        print("Transformer recommender loaded")
+        return {
+            'model': model,
+            'vocab': ckpt['vocab'],
+            'label_encoder': label_encoder,
+            'max_seq_len': ckpt['max_seq_len'],
+            'recommend': get_recommendations,
+        }
+    except Exception as e:
+        print(f"Could not load transformer checkpoint: {e}")
+        return None
+
+
+transformer_recommender = load_transformer_recommender()
+
+_svd_cache = None
+
+def get_svd_recommender():
+    """Train the SVD fallback once and cache it."""
+    global _svd_cache
+    if _svd_cache is None:
+        ratings_df = pd.read_csv(os.path.join(DATA_DIR, 'ratings_data.csv'))
+        reader = Reader(rating_scale=(0.5, 5))
+        data = Dataset.load_from_df(ratings_df[['userId', 'movieId', 'rating']], reader)
+        algo = SVD()
+        algo.fit(data.build_full_trainset())
+        _svd_cache = (ratings_df, algo)
+    return _svd_cache
 
 def get_imdb_movie_details(movie_id):
     try:
@@ -139,6 +192,55 @@ def movie_detail(movie_id):
     else:
         return "Movie not found", 404
 
+# TMDB genre names that differ from the MovieLens genre vocabulary the
+# model was trained on
+GENRE_SYNONYMS = {'science fiction': 'sci-fi', 'family': 'children', 'music': 'musical'}
+
+def recommend_with_transformer(tmdb_movie_ids, num_recommendations=5):
+    """Look up the selected movies' titles and genres on TMDB and ask the
+    trained Transformer for similar Top-1000 movies. Returns local movie ids."""
+    titles, texts = [], []
+    for tmdb_id in tmdb_movie_ids:
+        details = fetch_movie_details(tmdb_id)
+        if not details or not details.get('title'):
+            return None
+        titles.append(details['title'])
+        genres = [GENRE_SYNONYMS.get(g['name'].lower(), g['name'].lower())
+                  for g in details.get('genres', [])]
+        texts.append(f"{details['title']} {' '.join(genres)}".strip())
+
+    r = transformer_recommender
+    known_words = [w for t in texts for w in t.lower().split() if w in r['vocab']]
+    if not known_words:
+        return None
+    names = r['recommend'](
+        texts, r['vocab'], r['model'], r['label_encoder'],
+        r['max_seq_len'], device='cpu', top_k=25,
+    )
+    selected = {t.lower() for t in titles}
+    recommendations = []
+    for name in names:
+        movie_id = NAME_TO_ID.get(name)
+        if movie_id is None or name.lower() in selected or movie_id in recommendations:
+            continue
+        recommendations.append(movie_id)
+        if len(recommendations) == num_recommendations:
+            break
+    return recommendations or None
+
+
+def recommend_with_svd(user_movie_ids, num_recommendations=5):
+    """Fallback: rank the rated movies by predicted score for a generic user."""
+    ratings_df, algo = get_svd_recommender()
+    predictions = [
+        algo.predict('user_id', movie_id)
+        for movie_id in ratings_df['movieId'].unique()
+        if movie_id not in user_movie_ids
+    ]
+    predictions.sort(key=lambda p: p.est, reverse=True)
+    return [int(p.iid) for p in predictions[:num_recommendations]]
+
+
 @app.route('/recommend', methods=['POST'])
 def recommend():
     try:
@@ -146,31 +248,12 @@ def recommend():
         if len(user_movies) != 3:
             return jsonify({'error': 'Please select exactly 3 movies.'}), 400
 
-        # Load the ratings data
-        ratings_df = pd.read_csv(os.path.join(DATA_DIR, 'ratings_data.csv'))
+        recommended_movies = None
+        if transformer_recommender:
+            recommended_movies = recommend_with_transformer(user_movies)
+        if not recommended_movies:
+            recommended_movies = recommend_with_svd(user_movies)
 
-        # Use the Surprise library to handle the dataset and train the model
-        reader = Reader(rating_scale=(1, 5))
-        data = Dataset.load_from_df(ratings_df[['userId', 'movieId', 'rating']], reader)
-
-        # Split the data into training and testing sets
-        trainset, testset = train_test_split(data, test_size=0.25)
-
-        # Train the SVD algorithm
-        algo = SVD()
-        algo.fit(trainset)
-
-        # Function to recommend movies for a user
-        def recommend_movies(user_movie_ids, num_recommendations=5):
-            user_ratings = []
-            for movie_id in ratings_df['movieId'].unique():
-                if movie_id not in user_movie_ids:
-                    user_ratings.append(algo.predict('user_id', movie_id))
-            sorted_user_predictions = sorted(user_ratings, key=lambda x: x.est, reverse=True)
-            top_recommendations = [int(pred.iid) for pred in sorted_user_predictions[:num_recommendations]]  # Convert to regular int
-            return top_recommendations
-
-        recommended_movies = recommend_movies(user_movies)
         print(f"Recommended movies: {recommended_movies}")  # Log recommendations
         return jsonify(recommended_movies)
     except Exception as e:

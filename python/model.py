@@ -141,11 +141,13 @@ class Transformer(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def create_masks(self, src, tgt):
-        src_mask = (src != 0).unsqueeze(1).unsqueeze(2)
-        tgt_mask = (tgt != 0).unsqueeze(1).unsqueeze(3)
+        # Masks must broadcast against per-head attention logits of shape
+        # (batch, query_len, key_len), so they are built as 3-D tensors.
+        src_mask = (src != 0).unsqueeze(1)  # (batch, 1, src_len)
+        tgt_pad_mask = (tgt != 0).unsqueeze(1)  # (batch, 1, tgt_len)
         seq_length = tgt.size(1)
         future_mask = torch.tril(torch.ones((seq_length, seq_length), device=tgt.device)).bool()
-        combined_tgt_mask = tgt_mask & future_mask.unsqueeze(0).unsqueeze(1)
+        combined_tgt_mask = tgt_pad_mask & future_mask.unsqueeze(0)  # (batch, tgt_len, tgt_len)
         return src_mask, combined_tgt_mask
 
     def encode(self, src, src_mask):
