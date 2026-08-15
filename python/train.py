@@ -7,12 +7,15 @@ the model at inference time (app.py enriches TMDB titles with genres the
 same way).
 
 Usage:
-    python python/train.py                     # data/ratings_data.csv (ml-latest-small)
-    python python/train.py /path/to/ml-25m     # train on a full MovieLens release
+    python python/train.py                       # data/ratings_data.csv (ml-latest-small)
+    python python/train.py /path/to/ml-25m       # train on a full MovieLens release
+    python python/train.py /path/to/ml-25m 7     # seed override (for variance runs)
 
 Produces:
     models/transformer.pt      - checkpoint (weights + vocab + label classes)
     images/training_loss.png   - loss curve
+    (non-default seeds write transformer_seed{N}.pt / training_loss_seed{N}.png
+     so the shipped artifacts are never clobbered by a seed sweep)
 """
 import os
 import random
@@ -130,10 +133,16 @@ def evaluate(model, inputs, targets, criterion, device):
 
 
 def main():
-    random.seed(SEED)
-    np.random.seed(SEED)
-    torch.manual_seed(SEED)
-    rng = random.Random(SEED)
+    seed = int(sys.argv[2]) if len(sys.argv) > 2 else SEED
+    suffix = '' if seed == SEED else f'_seed{seed}'
+    model_path = MODEL_PATH.replace('.pt', f'{suffix}.pt')
+    plot_path = LOSS_PLOT_PATH.replace('.png', f'{suffix}.png')
+    print(f"Seed: {seed}")
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    rng = random.Random(seed)
 
     movies_df, ratings_df, genres_by_id = load_data()
     vocab, label_encoder, max_text_len = build_vocab_and_labels(movies_df, genres_by_id)
@@ -209,7 +218,7 @@ def main():
     print(f"Keeping best checkpoint from epoch {best_epoch} "
           f"(val loss {best_val_loss:.4f}, hit@5 {best_hit5:.1%} "
           f"vs popularity baseline {pop_hit5:.1%})")
-    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
     torch.save({
         'state_dict': best_state,
         'vocab': vocab,
@@ -217,8 +226,8 @@ def main():
         'max_seq_len': max_seq_len,
         'vocab_size': vocab_size,
         'hparams': HPARAMS,
-    }, MODEL_PATH)
-    print(f"Checkpoint saved to {MODEL_PATH}")
+    }, model_path)
+    print(f"Checkpoint saved to {model_path}")
 
     plt.figure(figsize=(8, 5))
     plt.plot(range(1, EPOCHS + 1), train_losses, label='train loss')
@@ -229,8 +238,8 @@ def main():
     plt.title('Transformer recommender training')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(LOSS_PLOT_PATH, dpi=150)
-    print(f"Loss curve saved to {LOSS_PLOT_PATH}")
+    plt.savefig(plot_path, dpi=150)
+    print(f"Loss curve saved to {plot_path}")
 
 
 if __name__ == '__main__':

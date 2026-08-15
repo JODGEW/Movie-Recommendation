@@ -203,10 +203,12 @@ def get_recommendations(user_input, vocab, model, label_encoder, max_seq_len, de
         input_tensor = torch.tensor(user_input_padded, dtype=torch.long).unsqueeze(0).to(device)
 
         output = model(input_tensor, input_tensor)
-        top_k_indices = torch.topk(output[0, -1, :], top_k).indices.tolist()
+        logits = output[0, -1, :].clone()
+        # Only the first len(classes) output units are trained as movie
+        # classes; mask the surplus vocab-sized tail so topk can never
+        # select an index outside the label space
+        logits[len(label_encoder.classes_):] = float('-inf')
+        top_k_indices = torch.topk(logits, top_k).indices.tolist()
 
-        # Ensure the indices are within the valid range
-        valid_indices = np.clip(top_k_indices, 0, len(label_encoder.classes_) - 1)
-    
-    movie_names = label_encoder.inverse_transform(valid_indices)
+    movie_names = label_encoder.inverse_transform(top_k_indices)
     return movie_names

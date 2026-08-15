@@ -82,9 +82,12 @@ the `/recommend` endpoint. To retrain it yourself:
 The task mirrors inference exactly: given the token sequence of 3 movies a user rated >= 4.0
 (each movie represented as its title plus genre words), predict another movie the same user
 liked. Validation is split by user, so the model is evaluated on users it has never seen.
-The shipped checkpoint reaches **hit@5 = 10.0%** on held-out users, vs **7.7%** for a
-popularity baseline that always recommends the 5 most-liked movies. If the checkpoint is
-missing, the app falls back to an SVD collaborative-filtering model trained on the same ratings.
+Across 3 training seeds (42/7/123, `python python/train.py ./ml-25m <seed>`) the model reaches
+**hit@5 = 9.5% ± 0.5%** on held-out users vs **7.1% ± 0.6%** for a popularity baseline that
+always recommends the 5 most-liked movies; the per-seed gap is stable at **+2.2 to +2.7
+points** and positive in every run. The shipped checkpoint is the seed-42 run (10.0% vs 7.7%).
+If the checkpoint is missing, the app falls back to an SVD collaborative-filtering model
+trained on the same ratings.
 
 <p align="center">
     <img src="images/training_loss.png" alt="Training Loss" width="600">

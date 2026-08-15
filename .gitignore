@@ -11,3 +11,7 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# Seed-sweep artifacts (variance runs; the shipped checkpoint is transformer.pt)
+models/transformer_seed*.pt
+images/training_loss_seed*.png
