@@ -1,3 +1,7 @@
+import re
+import time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from flask import Flask, jsonify, render_template, request
 import os
 import requests
@@ -5,21 +9,31 @@ import pandas as pd
 from dotenv import load_dotenv
 from surprise import Dataset, Reader, SVD
 
+# Reuse one HTTP connection pool for all TMDB calls
+tmdb_session = requests.Session()
+
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'models', 'transformer.pt')
 
-app = Flask(__name__, 
+app = Flask(__name__,
             template_folder=os.path.join(os.path.dirname(__file__), '..', 'templates'),
             static_folder=os.path.join(os.path.dirname(__file__), '..', 'static')
 )
+
+@app.template_filter('pretty_date')
+def pretty_date(value):
+    """Format a TMDB date like '2024-03-01' as 'March 1, 2024'."""
+    try:
+        return datetime.strptime(value, '%Y-%m-%d').strftime('%B %-d, %Y')
+    except (TypeError, ValueError):
+        return value
 
 # Load movie details into a DataFrame
 NAME_TO_ID = {}
 try:
     movie_details_df = pd.read_csv(os.path.join(DATA_DIR, 'Top_1000_IMDb_movies_New_version.csv'))
-    print("CSV columns:", movie_details_df.columns.tolist())  # Log the columns in the CSV file
     for _, row in movie_details_df.iterrows():
         NAME_TO_ID.setdefault(str(row['Movie Name']), int(row['Unnamed: 0']))
 except Exception as e:
@@ -77,10 +91,8 @@ def get_svd_recommender():
 
 def get_imdb_movie_details(movie_id):
     try:
-        print(f"Fetching details for IMDb movie ID: {movie_id}")
         movie = movie_details_df[movie_details_df['Unnamed: 0'] == movie_id]
         if not movie.empty:
-            print(f"Movie found: {movie}")
             # Remove commas from 'Votes' and 'Gross' columns and convert to appropriate types
             votes_str = movie.iloc[0]['Votes']
             votes = int(votes_str.replace(',', '')) if pd.notna(votes_str) else 0
@@ -121,7 +133,7 @@ def fetch_movies(page=1, genre=None, year=None, language=None):
         url += f"&with_genres={genre}"
     if year:
         if '-' in year:
-            start_year, end_year = year.split('-')
+            start_year, end_year = sorted(year.split('-'))
             url += f"&primary_release_date.gte={start_year}-01-01&primary_release_date.lte={end_year}-12-31"
         elif year == '90s':
             url += f"&primary_release_date.gte=1990-01-01&primary_release_date.lte=1999-12-31"
@@ -133,22 +145,28 @@ def fetch_movies(page=1, genre=None, year=None, language=None):
             url += f"&primary_release_year={year}"
     if language:
         url += f"&with_original_language={language}"
-    response = requests.get(url, timeout=10)
+    response = tmdb_session.get(url, timeout=10)
     if response.status_code == 200:
         return response.json().get('results', [])
     else:
         return []
 
+_genres_cache = None
+
 def fetch_genres():
-    url = f"https://api.themoviedb.org/3/genre/movie/list?api_key={TMDB_API_KEY}&language=en-US"
-    response = requests.get(url, timeout=10)
-    if response.status_code == 200:
-        return response.json().get('genres', [])
-    return []
+    global _genres_cache
+    if _genres_cache is None:
+        url = f"https://api.themoviedb.org/3/genre/movie/list?api_key={TMDB_API_KEY}&language=en-US"
+        response = tmdb_session.get(url, timeout=10)
+        if response.status_code == 200:
+            _genres_cache = response.json().get('genres', [])
+        else:
+            return []
+    return _genres_cache
 
 def fetch_movie_details(movie_id):
     url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={TMDB_API_KEY}&language=en-US&append_to_response=credits"
-    response = requests.get(url, timeout=10)
+    response = tmdb_session.get(url, timeout=10)
     if response.status_code == 200:
         return response.json()
     return None
@@ -158,30 +176,45 @@ def index():
     genres = fetch_genres()
     return render_template('index.html', genres=genres)
 
+_movies_cache = {}
+MOVIES_CACHE_TTL = 600  # seconds
+
+def _movie_card_payload(movie_id):
+    detail_data = fetch_movie_details(movie_id)
+    if not detail_data:
+        return None
+    return {
+        'id': movie_id,
+        'name': detail_data.get('title', 'N/A'),
+        'rating': detail_data.get('vote_average'),
+        'poster': f"https://image.tmdb.org/t/p/w500{detail_data.get('poster_path', '')}",
+        'cast': ', '.join([cast['name'] for cast in detail_data.get('credits', {}).get('cast', [])[:3]]),
+        'type': ', '.join([genre['name'] for genre in detail_data.get('genres', [])]),
+        'year': detail_data.get('release_date', '')[:4] if detail_data.get('release_date') else 'N/A',
+        'overview': detail_data.get('overview', 'No overview available'),
+        'director': ', '.join([crew['name'] for crew in detail_data.get('credits', {}).get('crew', []) if crew['job'] == 'Director'])
+    }
+
 @app.route('/api/movies')
 def get_movies():
     page = request.args.get('page', 1, type=int)
     genre = request.args.get('genre')
     year = request.args.get('year')
     language = request.args.get('language')
+
+    cache_key = (page, genre, year, language)
+    cached = _movies_cache.get(cache_key)
+    if cached and time.time() - cached[0] < MOVIES_CACHE_TTL:
+        return jsonify(cached[1])
+
     movies = fetch_movies(page, genre, year, language)
-    detailed_movies = []
-    for movie_data in movies:
-        movie_id = movie_data['id']
-        detail_url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={TMDB_API_KEY}&language=en-US&append_to_response=credits"
-        detail_response = requests.get(detail_url, timeout=10)
-        if detail_response.status_code == 200:
-            detail_data = detail_response.json()
-            detailed_movies.append({
-                'id': movie_id,
-                'name': detail_data.get('title', 'N/A'),
-                'poster': f"https://image.tmdb.org/t/p/w500{detail_data.get('poster_path', '')}",
-                'cast': ', '.join([cast['name'] for cast in detail_data.get('credits', {}).get('cast', [])[:3]]),
-                'type': ', '.join([genre['name'] for genre in detail_data.get('genres', [])]),
-                'year': detail_data.get('release_date', '')[:4] if detail_data.get('release_date') else 'N/A',
-                'overview': detail_data.get('overview', 'No overview available'),
-                'director': ', '.join([crew['name'] for crew in detail_data.get('credits', {}).get('crew', []) if crew['job'] == 'Director'])
-            })
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        detailed_movies = [
+            payload for payload in
+            executor.map(_movie_card_payload, [movie['id'] for movie in movies])
+            if payload
+        ]
+    _movies_cache[cache_key] = (time.time(), detailed_movies)
     return jsonify(detailed_movies)
 
 @app.route('/movie/<int:movie_id>')
@@ -196,9 +229,22 @@ def movie_detail(movie_id):
 # model was trained on
 GENRE_SYNONYMS = {'science fiction': 'sci-fi', 'family': 'children', 'music': 'musical'}
 
+def franchise_key(name):
+    """Collapse sequels/episodes onto one key so a franchise fills at most
+    one recommendation slot ('The Lord of the Rings: ...' -> 'the lord of the rings')."""
+    key = name.lower().split(':')[0]
+    key = re.sub(r'\b(part|episode|chapter|vol\.?|volume)\b.*$', '', key)
+    key = re.sub(r'\b(i{1,3}|iv|v|vi{1,3}|ix|x|\d+)\s*$', '', key.strip())
+    return re.sub(r'[^a-z0-9]+', ' ', key).strip()
+
 def recommend_with_transformer(tmdb_movie_ids, num_recommendations=5):
     """Look up the selected movies' titles and genres on TMDB and ask the
-    trained Transformer for similar Top-1000 movies. Returns local movie ids."""
+    trained Transformer for similar Top-1000 movies. Returns local movie ids.
+
+    Each pick is queried separately and the ranked lists are merged
+    round-robin, so a minority-genre pick (one animation among two action
+    films) still contributes recommendations instead of being averaged away.
+    """
     titles, texts = [], []
     for tmdb_id in tmdb_movie_ids:
         details = fetch_movie_details(tmdb_id)
@@ -210,22 +256,36 @@ def recommend_with_transformer(tmdb_movie_ids, num_recommendations=5):
         texts.append(f"{details['title']} {' '.join(genres)}".strip())
 
     r = transformer_recommender
-    known_words = [w for t in texts for w in t.lower().split() if w in r['vocab']]
-    if not known_words:
+    per_pick_names = []
+    for text in texts:
+        if not any(word in r['vocab'] for word in text.lower().split()):
+            continue  # nothing the model understands in this pick
+        names = r['recommend'](
+            [text], r['vocab'], r['model'], r['label_encoder'],
+            r['max_seq_len'], device='cpu', top_k=15,
+        )
+        per_pick_names.append(list(names))
+    if not per_pick_names:
         return None
-    names = r['recommend'](
-        texts, r['vocab'], r['model'], r['label_encoder'],
-        r['max_seq_len'], device='cpu', top_k=25,
-    )
+
     selected = {t.lower() for t in titles}
+    seen_ids, used_franchises = set(), set()
     recommendations = []
-    for name in names:
-        movie_id = NAME_TO_ID.get(name)
-        if movie_id is None or name.lower() in selected or movie_id in recommendations:
-            continue
-        recommendations.append(movie_id)
-        if len(recommendations) == num_recommendations:
-            break
+    for rank in range(max(len(names) for names in per_pick_names)):
+        for names in per_pick_names:
+            if rank >= len(names):
+                continue
+            name = names[rank]
+            movie_id = NAME_TO_ID.get(name)
+            if (movie_id is None or movie_id in seen_ids
+                    or name.lower() in selected
+                    or franchise_key(name) in used_franchises):
+                continue
+            seen_ids.add(movie_id)
+            used_franchises.add(franchise_key(name))
+            recommendations.append(movie_id)
+            if len(recommendations) == num_recommendations:
+                return recommendations
     return recommendations or None
 
 
@@ -262,13 +322,13 @@ def recommend():
 
 @app.route('/api/imdb_movie/<int:movie_id>')
 def imdb_movie_detail(movie_id):
-    print(f"Fetching details for IMDb movie ID: {movie_id}")
     movie = get_imdb_movie_details(movie_id)
     if movie:
         return jsonify(movie)
     else:
-        print(f"Movie with ID {movie_id} not found in IMDb data")
         return jsonify({'error': 'Movie not found'}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Default to 5001: macOS AirPlay Receiver squats on port 5000 and
+    # answers 403 whenever the app is down, which masks real errors.
+    app.run(debug=True, port=int(os.getenv('PORT', '5001')))
